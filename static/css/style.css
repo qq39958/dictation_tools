@@ -110,7 +110,7 @@ body {
   border-radius: var(--r-sm);
 }
 
-.app-nav { display:flex; height:100%; }
+.app-nav { display:flex; height:100%; align-items:center; }
 .nav-tab {
   display: flex;
   align-items: center;
@@ -1115,4 +1115,6 @@ tbody tr:nth-child(even):hover { background: var(--surface2); }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
 }
