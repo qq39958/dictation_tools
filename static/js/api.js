@@ -1,5 +1,5 @@
 // API client for Dictation Tools
-const API_BASE = 'https://dictationtools-api.3995854560.workers.dev';
+const API_BASE = '';
 
 const Api = {
     // ── Auth ──────────────────────────────────────────────────────────────────
