@@ -43,7 +43,7 @@ const SubjectManager = {
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="subject in filteredSubjects" :key="subject.subject_name + subject.subject_dir">
+                <tr v-for="subject in filteredSubjects" :key="subject.id">
                     <td class="td-name">{{ subject.subject_name }}</td>
                     <td><span class="dir-badge">{{ subject.subject_dir }}</span></td>
                     <td class="td-date">{{ formatDateTime(subject.created_at) }}</td>
@@ -59,7 +59,8 @@ const SubjectManager = {
             </tbody>
         </table>
 
-        <div v-else class="no-data">暂无题目 · 点击「＋ 新增题目」开始创建</div>
+        <div v-else-if="!loading" class="no-data">暂无题目 · 点击「＋ 新增题目」开始创建</div>
+        <div v-else class="no-data">加载中…</div>
 
         <!-- Add/Edit Modal -->
         <div class="modal modal-edit" v-if="showModal">
@@ -116,7 +117,7 @@ const SubjectManager = {
                     </div>
                     <div v-for="dir in directories" :key="'subjects-' + dir">
                         <div v-if="expandedDir === dir" class="dir-subjects-list">
-                            <div v-for="subject in subjectsByDir[dir]" :key="subject.subject_name" class="dir-subject-item">
+                            <div v-for="subject in subjectsByDir[dir]" :key="subject.id" class="dir-subject-item">
                                 <span>{{ subject.subject_name }}</span>
                                 <div class="dir-item-actions">
                                     <button class="btn btn-primary btn-sm" @click="startDictation(subject)">听写</button>
@@ -148,7 +149,7 @@ const SubjectManager = {
         <div class="modal" v-if="showImportConflictModal">
             <div class="modal-content" style="max-width:500px;">
                 <h3>导入冲突</h3>
-                <p style="color:var(--ink-mid); padding:8px 0;">以下题目在本地已存在，请选择处理方式：</p>
+                <p style="color:var(--ink-mid); padding:8px 0;">以下题目在云端已存在，请选择处理方式：</p>
                 <div class="import-conflict-list">
                     <div v-for="s in importConflicts" :key="s.subject_name + s.subject_dir" class="import-conflict-item">
                         <span class="dir-badge">{{ s.subject_dir }}</span> {{ s.subject_name }}
@@ -176,11 +177,12 @@ const SubjectManager = {
             filteredSubjects: [],
             searchTerm: '',
             sortKey: 'created_at',
-            sortOrder: 'desc', // 'asc' or 'desc'
+            sortOrder: 'desc',
             showModal: false,
             showDirModal: false,
             showConfirmModal: false,
             isEditing: false,
+            loading: false,
             currentSubject: {
                 subject_name: '',
                 subject_dir: '',
@@ -205,11 +207,16 @@ const SubjectManager = {
         this.loadDirectories();
     },
     methods: {
-        loadSubjects() {
-            const data = localStorage.getItem('dictation_subjects');
-            this.subjects = data ? JSON.parse(data) : [];
-            this.filteredSubjects = [...this.subjects];
-            this.extractDirectories();
+        async loadSubjects() {
+            this.loading = true;
+            try {
+                this.subjects = await Api.getSubjects();
+                this.filterSubjects();
+            } catch (e) {
+                this.toast('加载题目失败：' + e.message);
+            } finally {
+                this.loading = false;
+            }
         },
 
         loadSubjectsByDir(dir) {
@@ -217,23 +224,16 @@ const SubjectManager = {
                 this.expandedDir = null;
                 return;
             }
-            const data = localStorage.getItem('dictation_subjects');
-            const subjects = data ? JSON.parse(data) : [];
-            this.subjectsByDir[dir] = subjects.filter(s => s.subject_dir === dir);
+            this.subjectsByDir[dir] = this.subjects.filter(s => s.subject_dir === dir);
             this.expandedDir = dir;
         },
 
-        extractDirectories() {
-            const dirs = new Set();
-            this.subjects.forEach(subject => {
-                dirs.add(subject.subject_dir);
-            });
-            this.directories = Array.from(dirs);
-        },
-
-        loadDirectories() {
-            const data = localStorage.getItem('dictation_dirs');
-            this.directories = data ? JSON.parse(data) : [];
+        async loadDirectories() {
+            try {
+                this.directories = await Api.getDirs();
+            } catch (e) {
+                this.toast('加载目录失败：' + e.message);
+            }
         },
 
         filterSubjects() {
@@ -248,10 +248,8 @@ const SubjectManager = {
                 );
             }
 
-            // Apply sorting
             this.filteredSubjects = filtered.sort((a, b) => {
                 let result = 0;
-
                 if (this.sortKey === 'subject_name') {
                     result = a.subject_name.localeCompare(b.subject_name);
                 } else if (this.sortKey === 'subject_dir') {
@@ -259,7 +257,6 @@ const SubjectManager = {
                 } else if (this.sortKey === 'created_at') {
                     result = new Date(a.created_at) - new Date(b.created_at);
                 }
-
                 return this.sortOrder === 'asc' ? result : -result;
             });
         },
@@ -276,11 +273,7 @@ const SubjectManager = {
 
         showAddModal() {
             this.isEditing = false;
-            this.currentSubject = {
-                subject_name: '',
-                subject_dir: '',
-                subject_content: ''
-            };
+            this.currentSubject = { subject_name: '', subject_dir: '', subject_content: '' };
             this.loadDirectories();
             this.modalTitle = '新增题目';
             this.showModal = true;
@@ -306,84 +299,65 @@ const SubjectManager = {
             this.expandedDir = null;
         },
 
-        saveSubject() {
+        async saveSubject() {
             if (!/^[一-龥a-zA-Z0-9_.\- ]+$/.test(this.currentSubject.subject_name)) {
                 this.toast('题目名称不能为空或含有特殊字符');
                 return;
             }
-
             if (!/^[一-龥a-zA-Z0-9_.\- ]+$/.test(this.currentSubject.subject_dir)) {
                 this.toast('题目目录不能为空或含有特殊字符');
                 return;
             }
-
             if (!this.currentSubject.subject_content.trim()) {
                 this.toast('题目内容不能为空');
                 return;
             }
 
-            const data = localStorage.getItem('dictation_subjects');
-            const subjects = data ? JSON.parse(data) : [];
-
-            if (this.isEditing) {
-                const idx = subjects.findIndex(s =>
-                    s.subject_name === this.currentSubject.subject_name &&
-                    s.subject_dir === this.currentSubject.subject_dir
-                );
-                if (idx !== -1) {
-                    subjects[idx].subject_content = this.currentSubject.subject_content;
+            try {
+                if (this.isEditing) {
+                    await Api.updateSubject(this.currentSubject.id, this.currentSubject.subject_content);
+                    this.toast('题目更新成功');
+                } else {
+                    await Api.createSubject(
+                        this.currentSubject.subject_name,
+                        this.currentSubject.subject_dir,
+                        this.currentSubject.subject_content
+                    );
+                    this.toast('新增题目保存成功');
                 }
-            } else {
-                const exists = subjects.some(s =>
-                    s.subject_name === this.currentSubject.subject_name &&
-                    s.subject_dir === this.currentSubject.subject_dir
-                );
-                if (exists) {
-                    this.toast(`题目 ${this.currentSubject.subject_name} 在目录 ${this.currentSubject.subject_dir} 中已存在`);
-                    return;
-                }
-                subjects.unshift({
-                    subject_name: this.currentSubject.subject_name,
-                    subject_dir: this.currentSubject.subject_dir,
-                    subject_content: this.currentSubject.subject_content,
-                    created_at: new Date().toISOString()
-                });
+                this.closeModal();
+                await this.loadSubjects();
+            } catch (e) {
+                this.toast(e.message);
             }
-
-            localStorage.setItem('dictation_subjects', JSON.stringify(subjects));
-            this.closeModal();
-            this.toast(this.isEditing ? '题目更新成功' : '新增题目保存成功');
-            this.loadSubjects();
         },
 
         confirmDelete(subject) {
             this.confirmMessage = `确定要删除题目 "${subject.subject_name}" 吗？`;
-            this.confirmCallback = () => {
-                const data = localStorage.getItem('dictation_subjects');
-                const subjects = data ? JSON.parse(data) : [];
-                const updated = subjects.filter(s =>
-                    !(s.subject_name === subject.subject_name && s.subject_dir === subject.subject_dir)
-                );
-                localStorage.setItem('dictation_subjects', JSON.stringify(updated));
-                this.toast('题目删除成功');
-                this.loadSubjects();
+            this.confirmCallback = async () => {
+                try {
+                    await Api.deleteSubject(subject.id);
+                    this.toast('题目删除成功');
+                    await this.loadSubjects();
+                } catch (e) {
+                    this.toast('删除失败：' + e.message);
+                }
             };
             this.showConfirmModal = true;
         },
 
         confirmDeleteDirectory(dir) {
             this.confirmMessage = `确定要删除目录 "${dir}" 吗？该目录下的所有题目都将被删除！`;
-            this.confirmCallback = () => {
-                const data = localStorage.getItem('dictation_subjects');
-                const subjects = data ? JSON.parse(data) : [];
-                localStorage.setItem('dictation_subjects', JSON.stringify(subjects.filter(s => s.subject_dir !== dir)));
-                const dirs = localStorage.getItem('dictation_dirs');
-                const dirList = dirs ? JSON.parse(dirs) : [];
-                localStorage.setItem('dictation_dirs', JSON.stringify(dirList.filter(d => d !== dir)));
-                this.toast('目录删除成功');
-                this.loadSubjects();
-                this.loadDirectories();
-                this.expandedDir = null;
+            this.confirmCallback = async () => {
+                try {
+                    await Api.deleteDir(dir);
+                    this.toast('目录删除成功');
+                    await this.loadSubjects();
+                    await this.loadDirectories();
+                    this.expandedDir = null;
+                } catch (e) {
+                    this.toast('删除失败：' + e.message);
+                }
             };
             this.showConfirmModal = true;
         },
@@ -401,30 +375,26 @@ const SubjectManager = {
             this.confirmCallback = null;
         },
 
-        createDirectory() {
+        async createDirectory() {
             if (!this.newDirName.trim()) {
                 this.toast('目录名称不能为空');
                 return;
             }
-
             if (!/^[一-龥a-zA-Z0-9_.\- ]+$/.test(this.newDirName)) {
                 this.toast('目录名称不能为空或含有特殊字符');
                 return;
             }
-
-            const dirs = localStorage.getItem('dictation_dirs');
-            const dirList = dirs ? JSON.parse(dirs) : [];
-            if (!dirList.includes(this.newDirName)) {
-                dirList.push(this.newDirName);
-                localStorage.setItem('dictation_dirs', JSON.stringify(dirList));
+            try {
+                await Api.createDir(this.newDirName);
+                this.toast('目录创建成功');
+                await this.loadDirectories();
+                this.newDirName = '';
+            } catch (e) {
+                this.toast(e.message);
             }
-            this.toast('目录创建成功');
-            this.loadDirectories();
-            this.newDirName = '';
         },
 
         startDictation(subject) {
-            // Emit an event to switch to dictation view and pass the subject
             this.$emit('start-dictation', subject);
         },
 
@@ -444,13 +414,16 @@ const SubjectManager = {
         },
 
         exportSubjects() {
-            const subjects = JSON.parse(localStorage.getItem('dictation_subjects') || '[]');
-            const dirs = JSON.parse(localStorage.getItem('dictation_dirs') || '[]');
             const payload = {
                 version: 1,
                 exported_at: new Date().toISOString(),
-                dirs,
-                subjects
+                dirs: this.directories,
+                subjects: this.subjects.map(s => ({
+                    subject_name: s.subject_name,
+                    subject_dir: s.subject_dir,
+                    subject_content: s.subject_content,
+                    created_at: s.created_at,
+                }))
             };
             const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -483,9 +456,8 @@ const SubjectManager = {
                     this.toast('文件格式不正确，请选择由本工具导出的 JSON 文件');
                     return;
                 }
-                const local = JSON.parse(localStorage.getItem('dictation_subjects') || '[]');
-                const localKeys = new Set(local.map(s => s.subject_name + '|' + s.subject_dir));
-                const conflicts = data.subjects.filter(s => localKeys.has(s.subject_name + '|' + s.subject_dir));
+                const remoteKeys = new Set(this.subjects.map(s => s.subject_name + '|' + s.subject_dir));
+                const conflicts = data.subjects.filter(s => remoteKeys.has(s.subject_name + '|' + s.subject_dir));
                 this.importPending = data;
                 if (conflicts.length > 0) {
                     this.importConflicts = conflicts;
@@ -497,46 +469,45 @@ const SubjectManager = {
             reader.readAsText(file);
         },
 
-        doImport(overwrite) {
+        async doImport(overwrite) {
             this.showImportConflictModal = false;
             const data = this.importPending;
             this.importPending = null;
-            const local = JSON.parse(localStorage.getItem('dictation_subjects') || '[]');
-            const localDirs = JSON.parse(localStorage.getItem('dictation_dirs') || '[]');
-            const localKeys = new Set(local.map(s => s.subject_name + '|' + s.subject_dir));
-            let added = 0;
-            let affected = 0;
-            if (overwrite) {
-                data.subjects.forEach(s => {
-                    const key = s.subject_name + '|' + s.subject_dir;
-                    const idx = local.findIndex(l => l.subject_name + '|' + l.subject_dir === key);
-                    if (idx !== -1) {
-                        local[idx] = s;
-                        affected++;
+
+            const remoteKeys = new Set(this.subjects.map(s => s.subject_name + '|' + s.subject_dir));
+            let added = 0, skipped = 0, updated = 0;
+
+            for (const s of data.subjects) {
+                const key = s.subject_name + '|' + s.subject_dir;
+                const existing = this.subjects.find(r => r.subject_name + '|' + r.subject_dir === key);
+                if (existing) {
+                    if (overwrite) {
+                        try {
+                            await Api.updateSubject(existing.id, s.subject_content);
+                            updated++;
+                        } catch {}
                     } else {
-                        local.unshift(s);
-                        added++;
+                        skipped++;
                     }
-                });
-            } else {
-                data.subjects.forEach(s => {
-                    const key = s.subject_name + '|' + s.subject_dir;
-                    if (localKeys.has(key)) {
-                        affected++;
-                    } else {
-                        local.unshift(s);
+                } else {
+                    try {
+                        await Api.createSubject(s.subject_name, s.subject_dir, s.subject_content);
                         added++;
-                    }
-                });
+                    } catch {}
+                }
             }
-            const mergedDirs = Array.from(new Set([...localDirs, ...(data.dirs || [])]));
-            localStorage.setItem('dictation_subjects', JSON.stringify(local));
-            localStorage.setItem('dictation_dirs', JSON.stringify(mergedDirs));
-            const action = overwrite ? '覆盖' : '跳过';
-            this.toast(`导入成功：新增 ${added} 条，${action} ${affected} 条`);
-            this.loadSubjects();
-            this.loadDirectories();
+
+            // 同步目录
+            for (const dir of (data.dirs || [])) {
+                if (!this.directories.includes(dir)) {
+                    try { await Api.createDir(dir); } catch {}
+                }
+            }
+
+            const action = overwrite ? `覆盖 ${updated} 条` : `跳过 ${skipped} 条`;
+            this.toast(`导入成功：新增 ${added} 条，${action}`);
+            await this.loadSubjects();
+            await this.loadDirectories();
         }
     }
 };
-
