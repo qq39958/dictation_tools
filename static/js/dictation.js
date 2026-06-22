@@ -881,7 +881,7 @@ const Dictation = {
         },
 
         getCurrentDisplayText() {
-            if (this.isCompleted) return '文件已读完';
+            if (this.isCompleted) return '';
             if (this.currentItemIndex < 0 || this.currentItemIndex >= this.dictationItems.length) {
                 return '请先设置并开始听写';
             }
