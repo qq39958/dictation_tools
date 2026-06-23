@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="32" height="32" rx="7" fill="url(#g)"/>
+
+  <!-- Pencil: center at (8,17), rotated 45deg (tip points lower-left) -->
+  <g transform="translate(8,17) rotate(45)">
+    <!-- Eraser -->
+    <rect x="-3" y="-9" width="6" height="3" rx="1" fill="#7dd3fc"/>
+    <!-- Body -->
+    <rect x="-3" y="-6" width="6" height="12" rx="1.5" fill="white"/>
+    <!-- Tip -->
+    <polygon points="-3,6 3,6 0,10" fill="#bae6fd"/>
+  </g>
+
+  <!-- Sound waves (right side, centered at y=16) -->
+  <path d="M19 13 Q23.5 16 19 19"
+        stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M20 10 Q28 16 20 22"
+        stroke="white" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.75"/>
+</svg>
