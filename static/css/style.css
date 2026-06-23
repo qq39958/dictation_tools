@@ -110,12 +110,12 @@ body {
   border-radius: var(--r-sm);
 }
 
-.app-nav { display:flex; height:100%; align-items:center; }
+.app-nav { display:flex; align-items:center; gap:4px; }
 .nav-tab {
   display: flex;
   align-items: center;
   padding: 0 var(--s4);
-  height: 100%;
+  height: 36px;
   font-family: var(--font);
   font-size: 0.875rem;
   font-weight: 500;
@@ -1108,7 +1108,7 @@ tbody tr:nth-child(even):hover { background: var(--surface2); }
 
 /* ── User info in nav ──────────────────────────────────────────────────────── */
 .user-email {
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   color: var(--text3);
   margin: 0 4px;
   max-width: 160px;
