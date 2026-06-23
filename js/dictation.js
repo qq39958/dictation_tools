@@ -431,10 +431,8 @@ const Dictation = {
         },
 
         mergeSubjectContents() {
-            const data = localStorage.getItem('dictation_subjects');
-            const subjects = data ? JSON.parse(data) : [];
             const contents = this.arrangedSubjectNames.map(name => {
-                const s = subjects.find(s => s.subject_name === name && s.subject_dir === this.selectedDir);
+                const s = this.subjectsInDir.find(s => s.subject_name === name);
                 return s ? s.subject_content.trim() : '';
             }).filter(c => c !== '');
             this.subjectContent = contents.join('\n');
@@ -608,7 +606,7 @@ const Dictation = {
             this.saveSelectedContent = '';
         },
 
-        confirmSaveSelectedLines() {
+        async confirmSaveSelectedLines() {
             if (!this.saveSelectedName.trim()) {
                 this.successMessage = '题目名称不能为空';
                 this.showSuccessMessage = true;
@@ -624,26 +622,35 @@ const Dictation = {
                 this.showSuccessMessage = true;
                 return;
             }
-            const data = localStorage.getItem('dictation_subjects');
-            const subjects = data ? JSON.parse(data) : [];
-            const exists = subjects.some(s =>
-                s.subject_name === this.saveSelectedName && s.subject_dir === this.saveSelectedDir
-            );
-            if (exists) {
-                this.successMessage = `题目 ${this.saveSelectedName} 在目录 ${this.saveSelectedDir} 中已存在`;
+            try {
+                if (Api.isLoggedIn()) {
+                    await Api.createSubject(this.saveSelectedName, this.saveSelectedDir, this.saveSelectedContent);
+                } else {
+                    const data = localStorage.getItem('dictation_subjects');
+                    const subjects = data ? JSON.parse(data) : [];
+                    const exists = subjects.some(s =>
+                        s.subject_name === this.saveSelectedName && s.subject_dir === this.saveSelectedDir
+                    );
+                    if (exists) {
+                        this.successMessage = `题目 ${this.saveSelectedName} 在目录 ${this.saveSelectedDir} 中已存在`;
+                        this.showSuccessMessage = true;
+                        return;
+                    }
+                    subjects.unshift({
+                        subject_name: this.saveSelectedName,
+                        subject_dir: this.saveSelectedDir,
+                        subject_content: this.saveSelectedContent,
+                        created_at: new Date().toISOString()
+                    });
+                    localStorage.setItem('dictation_subjects', JSON.stringify(subjects));
+                }
+                this.successMessage = '保存成功';
                 this.showSuccessMessage = true;
-                return;
+                this.closeSaveSelectedModal();
+            } catch (e) {
+                this.successMessage = '保存失败：' + e.message;
+                this.showSuccessMessage = true;
             }
-            subjects.unshift({
-                subject_name: this.saveSelectedName,
-                subject_dir: this.saveSelectedDir,
-                subject_content: this.saveSelectedContent,
-                created_at: new Date().toISOString()
-            });
-            localStorage.setItem('dictation_subjects', JSON.stringify(subjects));
-            this.successMessage = '保存成功';
-            this.showSuccessMessage = true;
-            this.closeSaveSelectedModal();
         },
 
         closeSuccessMessage() {
