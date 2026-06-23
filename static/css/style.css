@@ -1110,8 +1110,9 @@ tbody tr:nth-child(even):hover { background: var(--surface2); }
 .user-email {
   font-size: 0.875rem;
   color: var(--text3);
-  margin: 0 4px;
-  max-width: 160px;
+  padding: 0 var(--s4);
+  height: 36px;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
