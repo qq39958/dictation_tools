@@ -993,8 +993,6 @@ tbody tr:nth-child(even):hover { background: var(--surface2); }
   .app-main { padding: var(--s5) var(--s4); }
   .brand-en { display: none; }
   .nav-tab { padding: 0 var(--s3); font-size: 0.82rem; }
-  th, td { padding: 9px 10px; font-size: 0.82rem; }
-  .td-preview, .td-date { display: none; }
   .controls { flex-direction: column; align-items: stretch; }
   .page-title { font-size: 1.25rem; }
   .modal { padding: var(--s3); padding-top: var(--s5); }
@@ -1002,6 +1000,41 @@ tbody tr:nth-child(even):hover { background: var(--surface2); }
   .display-area { font-size: 1.6rem; min-height: 120px; }
   .display-area.fullscreen { font-size: clamp(2rem, 12vw, 6rem); }
   .dictation-container { gap: var(--s4); }
+
+  /* 题目列表卡片化 */
+  table { border: none; box-shadow: none; background: transparent; border-radius: 0; }
+  thead { display: none; }
+  tbody { display: flex; flex-direction: column; gap: 10px; }
+  tbody tr {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    box-shadow: var(--shadow-sm);
+  }
+  tbody tr:nth-child(even) { background: var(--surface); }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr:last-child td { border-bottom: none; }
+  td {
+    display: block;
+    padding: 0;
+    border: none;
+    font-size: 0.875rem;
+  }
+  .td-name { font-size: 0.95rem; }
+  .td-preview {
+    display: block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.8rem;
+  }
+  .td-date { font-size: 0.75rem; }
+  .td-actions { justify-content: flex-end; margin-top: 2px; }
 }
 
 /* ─── iPad / Touch 适配 ──────────────────── */
