@@ -305,6 +305,10 @@ const Dictation = {
     },
     mounted() {
         this.loadDirectories();
+        this._onLogin = () => this.loadDirectories();
+        this._onLogout = () => this.loadDirectories();
+        window.addEventListener('dt:login', this._onLogin);
+        window.addEventListener('dt:logout', this._onLogout);
         if (window.selectedSubject) {
             const s = window.selectedSubject;
             this.selectedDir = s.subject_dir;
@@ -340,6 +344,8 @@ const Dictation = {
         document.removeEventListener('webkitfullscreenchange', this.handlePreviewFullscreenChange);
         document.removeEventListener('mozfullscreenchange', this.handlePreviewFullscreenChange);
         document.removeEventListener('MSFullscreenChange', this.handlePreviewFullscreenChange);
+        window.removeEventListener('dt:login', this._onLogin);
+        window.removeEventListener('dt:logout', this._onLogout);
     },
     watch: {
         subjectContent() {
@@ -351,19 +357,51 @@ const Dictation = {
         }
     },
     methods: {
-        loadDirectories() {
-            const data = localStorage.getItem('dictation_dirs');
-            this.directories = data ? JSON.parse(data) : [];
+        async retryRequest(fn, retries = 3, delay = 1000) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    return await fn();
+                } catch (e) {
+                    if (i < retries - 1) {
+                        await new Promise(r => setTimeout(r, delay));
+                    } else {
+                        throw e;
+                    }
+                }
+            }
         },
 
-        loadSubjectsForDir() {
+        async loadDirectories() {
+            if (Api.isLoggedIn()) {
+                try {
+                    this.directories = await this.retryRequest(() => Api.getDirs());
+                } catch (e) {
+                    alert('加载目录失败，请检查网络状态');
+                }
+            } else {
+                const data = localStorage.getItem('dictation_dirs');
+                this.directories = data ? JSON.parse(data) : [];
+            }
+        },
+
+        async loadSubjectsForDir() {
             if (!this.selectedDir) {
                 this.subjectsInDir = [];
                 return;
             }
-            const data = localStorage.getItem('dictation_subjects');
-            const subjects = data ? JSON.parse(data) : [];
-            this.subjectsInDir = subjects.filter(s => s.subject_dir === this.selectedDir);
+            if (Api.isLoggedIn()) {
+                try {
+                    const allSubjects = await this.retryRequest(() => Api.getSubjects());
+                    this.subjectsInDir = allSubjects.filter(s => s.subject_dir === this.selectedDir);
+                } catch (e) {
+                    alert('加载题目失败，请检查网络状态');
+                    this.subjectsInDir = [];
+                }
+            } else {
+                const data = localStorage.getItem('dictation_subjects');
+                const subjects = data ? JSON.parse(data) : [];
+                this.subjectsInDir = subjects.filter(s => s.subject_dir === this.selectedDir);
+            }
             this.selectedSubjectNames = [];
             this.arrangedSubjectNames = [];
         },
