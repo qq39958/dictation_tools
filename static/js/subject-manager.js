@@ -205,12 +205,33 @@ const SubjectManager = {
     mounted() {
         this.loadSubjects();
         this.loadDirectories();
+        // 登录后切换到云端数据
+        this._onLogin = () => {
+            this.loadSubjects();
+            this.loadDirectories();
+        };
+        window.addEventListener('dt:login', this._onLogin);
+        // 登出后切换回本地数据
+        this._onLogout = () => {
+            this.loadSubjects();
+            this.loadDirectories();
+        };
+        window.addEventListener('dt:logout', this._onLogout);
+    },
+    unmounted() {
+        window.removeEventListener('dt:login', this._onLogin);
+        window.removeEventListener('dt:logout', this._onLogout);
     },
     methods: {
         async loadSubjects() {
             this.loading = true;
             try {
-                this.subjects = await Api.getSubjects();
+                if (Api.isLoggedIn()) {
+                    this.subjects = await Api.getSubjects();
+                } else {
+                    const data = localStorage.getItem('dictation_subjects');
+                    this.subjects = data ? JSON.parse(data) : [];
+                }
                 this.filterSubjects();
             } catch (e) {
                 this.toast('加载题目失败：' + e.message);
@@ -230,7 +251,12 @@ const SubjectManager = {
 
         async loadDirectories() {
             try {
-                this.directories = await Api.getDirs();
+                if (Api.isLoggedIn()) {
+                    this.directories = await Api.getDirs();
+                } else {
+                    const data = localStorage.getItem('dictation_dirs');
+                    this.directories = data ? JSON.parse(data) : [];
+                }
             } catch (e) {
                 this.toast('加载目录失败：' + e.message);
             }
@@ -314,17 +340,44 @@ const SubjectManager = {
             }
 
             try {
-                if (this.isEditing) {
-                    await Api.updateSubject(this.currentSubject.id, this.currentSubject.subject_content);
-                    this.toast('题目更新成功');
+                if (Api.isLoggedIn()) {
+                    if (this.isEditing) {
+                        await Api.updateSubject(this.currentSubject.id, this.currentSubject.subject_content);
+                    } else {
+                        await Api.createSubject(
+                            this.currentSubject.subject_name,
+                            this.currentSubject.subject_dir,
+                            this.currentSubject.subject_content
+                        );
+                    }
                 } else {
-                    await Api.createSubject(
-                        this.currentSubject.subject_name,
-                        this.currentSubject.subject_dir,
-                        this.currentSubject.subject_content
-                    );
-                    this.toast('新增题目保存成功');
+                    const subjects = JSON.parse(localStorage.getItem('dictation_subjects') || '[]');
+                    if (this.isEditing) {
+                        const idx = subjects.findIndex(s =>
+                            s.subject_name === this.currentSubject.subject_name &&
+                            s.subject_dir === this.currentSubject.subject_dir
+                        );
+                        if (idx !== -1) subjects[idx].subject_content = this.currentSubject.subject_content;
+                    } else {
+                        const exists = subjects.some(s =>
+                            s.subject_name === this.currentSubject.subject_name &&
+                            s.subject_dir === this.currentSubject.subject_dir
+                        );
+                        if (exists) {
+                            this.toast(`题目 ${this.currentSubject.subject_name} 在目录 ${this.currentSubject.subject_dir} 中已存在`);
+                            return;
+                        }
+                        subjects.unshift({
+                            id: Date.now().toString(),
+                            subject_name: this.currentSubject.subject_name,
+                            subject_dir: this.currentSubject.subject_dir,
+                            subject_content: this.currentSubject.subject_content,
+                            created_at: new Date().toISOString()
+                        });
+                    }
+                    localStorage.setItem('dictation_subjects', JSON.stringify(subjects));
                 }
+                this.toast(this.isEditing ? '题目更新成功' : '新增题目保存成功');
                 this.closeModal();
                 await this.loadSubjects();
             } catch (e) {
@@ -336,7 +389,14 @@ const SubjectManager = {
             this.confirmMessage = `确定要删除题目 "${subject.subject_name}" 吗？`;
             this.confirmCallback = async () => {
                 try {
-                    await Api.deleteSubject(subject.id);
+                    if (Api.isLoggedIn()) {
+                        await Api.deleteSubject(subject.id);
+                    } else {
+                        const subjects = JSON.parse(localStorage.getItem('dictation_subjects') || '[]');
+                        localStorage.setItem('dictation_subjects', JSON.stringify(
+                            subjects.filter(s => !(s.subject_name === subject.subject_name && s.subject_dir === subject.subject_dir))
+                        ));
+                    }
                     this.toast('题目删除成功');
                     await this.loadSubjects();
                 } catch (e) {
@@ -350,7 +410,14 @@ const SubjectManager = {
             this.confirmMessage = `确定要删除目录 "${dir}" 吗？该目录下的所有题目都将被删除！`;
             this.confirmCallback = async () => {
                 try {
-                    await Api.deleteDir(dir);
+                    if (Api.isLoggedIn()) {
+                        await Api.deleteDir(dir);
+                    } else {
+                        const subjects = JSON.parse(localStorage.getItem('dictation_subjects') || '[]');
+                        localStorage.setItem('dictation_subjects', JSON.stringify(subjects.filter(s => s.subject_dir !== dir)));
+                        const dirs = JSON.parse(localStorage.getItem('dictation_dirs') || '[]');
+                        localStorage.setItem('dictation_dirs', JSON.stringify(dirs.filter(d => d !== dir)));
+                    }
                     this.toast('目录删除成功');
                     await this.loadSubjects();
                     await this.loadDirectories();
@@ -385,7 +452,15 @@ const SubjectManager = {
                 return;
             }
             try {
-                await Api.createDir(this.newDirName);
+                if (Api.isLoggedIn()) {
+                    await Api.createDir(this.newDirName);
+                } else {
+                    const dirs = JSON.parse(localStorage.getItem('dictation_dirs') || '[]');
+                    if (!dirs.includes(this.newDirName)) {
+                        dirs.push(this.newDirName);
+                        localStorage.setItem('dictation_dirs', JSON.stringify(dirs));
+                    }
+                }
                 this.toast('目录创建成功');
                 await this.loadDirectories();
                 this.newDirName = '';
