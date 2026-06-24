@@ -514,12 +514,38 @@ const SubjectManager = {
             this.touchPlaceholderIdx = idx;
             this.dragOverIdx = idx;
             this.touchStartY = e.touches[0].clientY;
-            e.currentTarget.closest('tr').classList.add('touch-dragging');
+            const tr = e.currentTarget.closest('tr');
+            tr.classList.add('touch-dragging');
+            // 创建悬浮克隆
+            const clone = tr.cloneNode(true);
+            const rect = tr.getBoundingClientRect();
+            clone.style.cssText = `
+                position: fixed;
+                left: ${rect.left}px;
+                top: ${rect.top}px;
+                width: ${rect.width}px;
+                z-index: 9999;
+                pointer-events: none;
+                opacity: 0.92;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+                border-radius: 8px;
+                background: var(--surface);
+                transform: scale(1.02);
+                transition: box-shadow 0.1s;
+            `;
+            document.body.appendChild(clone);
+            this._dragClone = clone;
+            this._dragOffsetY = e.touches[0].clientY - rect.top;
         },
 
         onRowTouchMove(e) {
             if (this.touchDraggingIdx === null) return;
             const clientY = e.touches[0].clientY;
+            // 移动克隆
+            if (this._dragClone) {
+                this._dragClone.style.top = (clientY - this._dragOffsetY) + 'px';
+            }
+            // 计算目标位置
             const rows = Array.from(this.$refs.tbody.children);
             let newIdx = this.touchDraggingIdx;
             for (let i = 0; i < rows.length; i++) {
@@ -538,6 +564,11 @@ const SubjectManager = {
 
         onRowTouchEnd(e) {
             if (this.touchDraggingIdx === null) return;
+            // 移除克隆
+            if (this._dragClone) {
+                this._dragClone.remove();
+                this._dragClone = null;
+            }
             e.currentTarget.closest('tr').classList.remove('touch-dragging');
             const from = this.touchDraggingIdx;
             const to = this.touchPlaceholderIdx;
