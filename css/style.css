@@ -991,7 +991,10 @@ tbody tr:nth-child(even):hover { background: var(--surface2); }
 @media (max-width: 640px) {
   .header-inner { padding: 0 var(--s4); }
   .app-main { padding: var(--s5) var(--s4); }
+  .brand { flex-shrink: 0; }
   .brand-en { display: none; }
+  .nav-only-pc { display: none !important; }
+  .nav-only-mobile { display: block; }
   .nav-tab { padding: 0 var(--s3); font-size: 0.82rem; }
   .controls { flex-direction: column; align-items: stretch; }
   .page-title { font-size: 1.25rem; }
@@ -1155,3 +1158,52 @@ tbody tr:nth-child(even):hover { background: var(--surface2); }
   display: inline-flex;
   align-items: center;
 }
+
+/* ─── 汉堡菜单（移动端专用） ─────────────────── */
+.nav-only-mobile { display: none; }
+.nav-only-pc { display: inline-flex; }
+
+.nav-menu-wrap {
+  position: relative;
+}
+.nav-hamburger {
+  font-size: 1.1rem;
+  padding: 0 10px;
+}
+.nav-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 160px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  z-index: 300;
+  overflow: hidden;
+}
+.dropdown-email {
+  display: block;
+  padding: 10px 16px;
+  font-size: 0.8rem;
+  color: var(--text3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--border);
+}
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background var(--t1);
+}
+.dropdown-item:hover { background: var(--surface2); }
