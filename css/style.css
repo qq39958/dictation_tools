@@ -984,6 +984,9 @@ tbody tr:nth-child(even):hover { background: var(--surface2); }
 }
 
 /* ─── Responsive ─────────────────────────── */
+.nav-only-mobile { display: none; }
+.nav-only-pc { display: inline-flex; }
+
 @media (max-width: 900px) {
   .dictation-container { grid-template-columns: 1fr; }
   .dictation-panel:first-child { position: static; }
@@ -1160,8 +1163,6 @@ tbody tr:nth-child(even):hover { background: var(--surface2); }
 }
 
 /* ─── 汉堡菜单（移动端专用） ─────────────────── */
-.nav-only-mobile { display: none; }
-.nav-only-pc { display: inline-flex; }
 
 .nav-menu-wrap {
   position: relative;
