@@ -1047,9 +1047,19 @@ tbody tr:nth-child(even):hover { background: var(--surface2); }
   }
   .td-date { font-size: 0.75rem; }
   .td-actions { justify-content: flex-start; margin-top: 2px; }
-  .td-drag { display: inline-block; width: auto; padding: 4px 10px 4px 0; }
+  tbody tr { position: relative; }
+  .td-drag {
+    display: block;
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: auto;
+    padding: 4px 6px;
+    font-size: 1.1rem;
+    opacity: 0.4;
+  }
   tbody tr.drag-over { box-shadow: 0 -3px 0 var(--accent), var(--shadow-sm); }
-  tbody tr.touch-dragging { opacity: 0.35; background: var(--accent-bg) !important; }
+  tbody tr.touch-dragging { opacity: 0.3; background: var(--accent-bg) !important; }
 }
 
 /* ─── iPad / Touch 适配 ──────────────────── */
