@@ -1047,6 +1047,8 @@ tbody tr:nth-child(even):hover { background: var(--surface2); }
   }
   .td-date { font-size: 0.75rem; }
   .td-actions { justify-content: flex-start; margin-top: 2px; }
+  tbody tr.drag-over { box-shadow: 0 -3px 0 var(--accent), var(--shadow-sm); }
+  tbody tr.touch-dragging { opacity: 0.35; background: var(--accent-bg) !important; }
 }
 
 /* ─── iPad / Touch 适配 ──────────────────── */
