@@ -28,27 +28,30 @@ const Dictation = {
                     <label>选择题目 <span style="color:var(--text3);font-weight:400">（可多选）</span></label>
                     <!-- PC: 原生 select multiple -->
                     <template v-if="!isTouch">
-                        <select multiple v-model="selectedSubjectNames" @change="onSubjectMultiSelect" class="subject-multi-select">
+                        <select multiple v-model="selectedSubjectNames" @change="onSubjectMultiSelect" class="subject-multi-select" ref="subjectSelect">
                             <option v-for="subject in subjectsInDir" :key="subject.subject_name" :value="subject.subject_name">{{ subject.subject_name }}</option>
                         </select>
                         <div style="margin-top:4px;font-size:0.7rem;color:var(--text3)">按住 Cmd/Ctrl 可多选</div>
                     </template>
                     <!-- iPad: checkbox 列表 -->
                     <template v-else>
-                        <div class="subject-checkbox-list">
-                            <label
+                        <div class="subject-checkbox-list" ref="checkboxList">
+                            <div
                                 v-for="subject in subjectsInDir"
                                 :key="subject.subject_name"
                                 class="subject-checkbox-item"
+                                :class="{ 'subject-checkbox-item--checked': selectedSubjectNames.includes(subject.subject_name) }"
+                                @click="toggleCheckbox(subject.subject_name)"
                             >
                                 <input
                                     type="checkbox"
                                     :value="subject.subject_name"
-                                    v-model="selectedSubjectNames"
-                                    @change="onSubjectMultiSelect"
+                                    :checked="selectedSubjectNames.includes(subject.subject_name)"
+                                    @click.stop
+                                    @change="toggleCheckbox(subject.subject_name)"
                                 >
                                 <span>{{ subject.subject_name }}</span>
-                            </label>
+                            </div>
                         </div>
                         <div style="margin-top:4px;font-size:0.7rem;color:var(--text3)">点击勾选，可多选</div>
                     </template>
@@ -303,7 +306,7 @@ const Dictation = {
             successMessage: ''
         };
     },
-    mounted() {
+    async mounted() {
         this.loadDirectories();
         this._onLogin = () => this.loadDirectories();
         this._onLogout = () => this.loadDirectories();
@@ -312,12 +315,13 @@ const Dictation = {
         if (window.selectedSubject) {
             const s = window.selectedSubject;
             this.selectedDir = s.subject_dir;
-            this.loadSubjectsForDir();
-            this.selectedSubjectName = s.subject_name;
+            await this.loadSubjectsForDir();
             this.selectedSubjectNames = [s.subject_name];
             this.arrangedSubjectNames = [s.subject_name];
             this.subjectContent = s.subject_content;
             window.selectedSubject = null;
+            await this.$nextTick();
+            this._scrollToSelected(s.subject_name);
         }
         this.updatePreview();
         if (!this.isTouch) {
@@ -357,6 +361,31 @@ const Dictation = {
         }
     },
     methods: {
+        toggleCheckbox(name) {
+            const idx = this.selectedSubjectNames.indexOf(name);
+            if (idx === -1) {
+                this.selectedSubjectNames.push(name);
+            } else {
+                this.selectedSubjectNames.splice(idx, 1);
+            }
+            this.onSubjectMultiSelect();
+        },
+
+        _scrollToSelected(name) {
+            if (!this.isTouch) {
+                const sel = this.$refs.subjectSelect;
+                if (!sel) return;
+                const opt = Array.from(sel.options).find(o => o.value === name);
+                if (opt) opt.scrollIntoView({ block: 'nearest' });
+            } else {
+                const list = this.$refs.checkboxList;
+                if (!list) return;
+                const item = Array.from(list.querySelectorAll('.subject-checkbox-item'))
+                    .find(el => el.querySelector('span')?.textContent === name);
+                if (item) item.scrollIntoView({ block: 'nearest' });
+            }
+        },
+
         async retryRequest(fn, retries = 3, delay = 1000) {
             for (let i = 0; i < retries; i++) {
                 try {
