@@ -379,17 +379,9 @@ th {
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--text2);
-  cursor: pointer;
-  user-select: none;
   white-space: nowrap;
-  transition: color var(--t1);
   border-bottom: 1px solid var(--border);
 }
-th:hover { color: var(--text); background: var(--surface3); }
-th::after { content:'⇅'; margin-left:4px; opacity:0.35; font-size:0.8em; }
-th.sort-asc::after  { content:'↑'; opacity:1; color:var(--accent); }
-th.sort-desc::after { content:'↓'; opacity:1; color:var(--accent); }
-.sort-indicator { display:none; }
 
 td {
   padding: 11px 16px;
@@ -401,10 +393,23 @@ td {
 tbody tr { transition: background var(--t1); }
 tbody tr:hover { background: var(--surface2); }
 tbody tr:last-child td { border-bottom: none; }
+tbody tr.dragging { opacity: 0.4; }
+tbody tr.drag-over { box-shadow: 0 -2px 0 var(--accent); }
+tbody tr.touch-dragging { opacity: 0.4; background: var(--accent-bg); }
 tbody tr:nth-child(even) { background: rgba(244,244,245,0.5); }
 tbody tr:nth-child(even):hover { background: var(--surface2); }
 
 /* Cell types */
+.td-drag {
+  width: 20px;
+  color: var(--text3);
+  cursor: grab;
+  user-select: none;
+  font-size: 1rem;
+  text-align: center;
+}
+.td-drag:active { cursor: grabbing; }
+.drag-disabled .td-drag { cursor: default; opacity: 0.3; }
 .td-name  { font-weight: 600; color: var(--text); }
 .dir-badge {
   display: inline-flex;
