@@ -31,7 +31,7 @@ const SubjectManager = {
                     <th>操作</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody ref="tbody">
                 <tr
                     v-for="(subject, idx) in filteredSubjects"
                     :key="subject.id"
@@ -510,20 +510,24 @@ const SubjectManager = {
         onRowTouchStart(idx, e) {
             this.touchDraggingIdx = idx;
             this.touchPlaceholderIdx = idx;
+            this.dragOverIdx = idx;
             this.touchStartY = e.touches[0].clientY;
-            const tr = e.currentTarget;
-            this.touchRowHeight = tr.getBoundingClientRect().height;
-            tr.classList.add('touch-dragging');
+            e.currentTarget.classList.add('touch-dragging');
         },
 
         onRowTouchMove(e) {
             if (this.touchDraggingIdx === null) return;
-            const dy = e.touches[0].clientY - this.touchStartY;
-            const steps = Math.round(dy / this.touchRowHeight);
-            const newIdx = Math.max(0, Math.min(
-                this.filteredSubjects.length - 1,
-                this.touchDraggingIdx + steps
-            ));
+            const clientY = e.touches[0].clientY;
+            const rows = Array.from(this.$refs.tbody.children);
+            let newIdx = this.touchDraggingIdx;
+            for (let i = 0; i < rows.length; i++) {
+                const rect = rows[i].getBoundingClientRect();
+                if (clientY < rect.top + rect.height / 2) {
+                    newIdx = i;
+                    break;
+                }
+                newIdx = i;
+            }
             if (newIdx !== this.touchPlaceholderIdx) {
                 this.touchPlaceholderIdx = newIdx;
                 this.dragOverIdx = newIdx;
