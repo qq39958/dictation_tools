@@ -1032,9 +1032,10 @@ tbody tr:nth-child(even):hover { background: var(--surface2); }
     overflow: hidden;
     text-overflow: ellipsis;
     font-size: 0.8rem;
+    max-width: 18em;
   }
   .td-date { font-size: 0.75rem; }
-  .td-actions { justify-content: flex-end; margin-top: 2px; }
+  .td-actions { justify-content: flex-start; margin-top: 2px; }
 }
 
 /* ─── iPad / Touch 适配 ──────────────────── */
@@ -1061,6 +1062,8 @@ tbody tr:nth-child(even):hover { background: var(--surface2); }
 }
 .subject-checkbox-item:last-child { border-bottom: none; }
 .subject-checkbox-item:active { background: var(--surface2); }
+.subject-checkbox-item--checked { background: var(--accent-bg); color: var(--accent); }
+.subject-checkbox-item--checked:active { background: var(--accent-bg); }
 .subject-checkbox-item input[type="checkbox"] {
   width: 18px;
   height: 18px;
