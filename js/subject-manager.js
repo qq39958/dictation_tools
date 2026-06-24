@@ -23,27 +23,33 @@ const SubjectManager = {
         <table v-if="filteredSubjects.length > 0">
             <thead>
                 <tr>
-                    <th
-                        @click="sortBy('subject_name')"
-                        :class="{ 'sort-asc': sortKey==='subject_name' && sortOrder==='asc', 'sort-desc': sortKey==='subject_name' && sortOrder==='desc' }">
-                        题目名称
-                    </th>
-                    <th
-                        @click="sortBy('subject_dir')"
-                        :class="{ 'sort-asc': sortKey==='subject_dir' && sortOrder==='asc', 'sort-desc': sortKey==='subject_dir' && sortOrder==='desc' }">
-                        目录
-                    </th>
-                    <th
-                        @click="sortBy('created_at')"
-                        :class="{ 'sort-asc': sortKey==='created_at' && sortOrder==='asc', 'sort-desc': sortKey==='created_at' && sortOrder==='desc' }">
-                        创建时间
-                    </th>
+                    <th></th>
+                    <th>题目名称</th>
+                    <th>目录</th>
+                    <th>创建时间</th>
                     <th>内容预览</th>
                     <th>操作</th>
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="subject in filteredSubjects" :key="subject.id">
+                <tr
+                    v-for="(subject, idx) in filteredSubjects"
+                    :key="subject.id"
+                    :draggable="!isTouch && !searchTerm"
+                    :class="{
+                        'drag-over': dragOverIdx === idx,
+                        'dragging': draggingIdx === idx,
+                        'drag-disabled': !!searchTerm
+                    }"
+                    @dragstart="!isTouch && !searchTerm && onRowDragStart(idx, $event)"
+                    @dragover.prevent="!isTouch && !searchTerm && onRowDragOver(idx)"
+                    @drop="!isTouch && !searchTerm && onRowDrop(idx)"
+                    @dragend="!isTouch && onRowDragEnd()"
+                    @touchstart.passive="isTouch && !searchTerm && onRowTouchStart(idx, $event)"
+                    @touchmove.prevent="isTouch && !searchTerm && onRowTouchMove($event)"
+                    @touchend="isTouch && !searchTerm && onRowTouchEnd($event)"
+                >
+                    <td class="td-drag" v-if="!searchTerm">⠿</td>
                     <td class="td-name">{{ subject.subject_name }}</td>
                     <td><span class="dir-badge">{{ subject.subject_dir }}</span></td>
                     <td class="td-date">{{ formatDateTime(subject.created_at) }}</td>
@@ -176,8 +182,6 @@ const SubjectManager = {
             subjects: [],
             filteredSubjects: [],
             searchTerm: '',
-            sortKey: 'created_at',
-            sortOrder: 'desc',
             showModal: false,
             showDirModal: false,
             showConfirmModal: false,
@@ -199,7 +203,13 @@ const SubjectManager = {
             toastMessage: '',
             showImportConflictModal: false,
             importConflicts: [],
-            importPending: null
+            importPending: null,
+            draggingIdx: null,
+            dragOverIdx: null,
+            touchDraggingIdx: null,
+            touchPlaceholderIdx: null,
+            touchStartY: 0,
+            touchRowHeight: 0,
         };
     },
     mounted() {
@@ -274,27 +284,7 @@ const SubjectManager = {
                 );
             }
 
-            this.filteredSubjects = filtered.sort((a, b) => {
-                let result = 0;
-                if (this.sortKey === 'subject_name') {
-                    result = a.subject_name.localeCompare(b.subject_name);
-                } else if (this.sortKey === 'subject_dir') {
-                    result = a.subject_dir.localeCompare(b.subject_dir);
-                } else if (this.sortKey === 'created_at') {
-                    result = new Date(a.created_at) - new Date(b.created_at);
-                }
-                return this.sortOrder === 'asc' ? result : -result;
-            });
-        },
-
-        sortBy(key) {
-            if (this.sortKey === key) {
-                this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
-            } else {
-                this.sortKey = key;
-                this.sortOrder = 'asc';
-            }
-            this.filterSubjects();
+            this.filteredSubjects = filtered;
         },
 
         showAddModal() {
@@ -486,6 +476,87 @@ const SubjectManager = {
         closeToast() {
             this.showToast = false;
             this.toastMessage = '';
+        },
+
+        // ── 拖拽排序（PC） ────────────────────────────────────────────────
+        onRowDragStart(idx, e) {
+            this.draggingIdx = idx;
+            e.dataTransfer.effectAllowed = 'move';
+        },
+
+        onRowDragOver(idx) {
+            if (this.draggingIdx === null || this.draggingIdx === idx) return;
+            this.dragOverIdx = idx;
+        },
+
+        onRowDrop(idx) {
+            if (this.draggingIdx === null || this.draggingIdx === idx) return;
+            const arr = [...this.filteredSubjects];
+            const [moved] = arr.splice(this.draggingIdx, 1);
+            arr.splice(idx, 0, moved);
+            this.filteredSubjects = arr;
+            this.subjects = arr;
+            this.draggingIdx = null;
+            this.dragOverIdx = null;
+            this.saveOrder();
+        },
+
+        onRowDragEnd() {
+            this.draggingIdx = null;
+            this.dragOverIdx = null;
+        },
+
+        // ── 拖拽排序（移动端 touch） ──────────────────────────────────────
+        onRowTouchStart(idx, e) {
+            this.touchDraggingIdx = idx;
+            this.touchPlaceholderIdx = idx;
+            this.touchStartY = e.touches[0].clientY;
+            const tr = e.currentTarget;
+            this.touchRowHeight = tr.getBoundingClientRect().height;
+            tr.classList.add('touch-dragging');
+        },
+
+        onRowTouchMove(e) {
+            if (this.touchDraggingIdx === null) return;
+            const dy = e.touches[0].clientY - this.touchStartY;
+            const steps = Math.round(dy / this.touchRowHeight);
+            const newIdx = Math.max(0, Math.min(
+                this.filteredSubjects.length - 1,
+                this.touchDraggingIdx + steps
+            ));
+            if (newIdx !== this.touchPlaceholderIdx) {
+                this.touchPlaceholderIdx = newIdx;
+                this.dragOverIdx = newIdx;
+            }
+        },
+
+        onRowTouchEnd(e) {
+            if (this.touchDraggingIdx === null) return;
+            e.currentTarget.classList.remove('touch-dragging');
+            const from = this.touchDraggingIdx;
+            const to = this.touchPlaceholderIdx;
+            this.touchDraggingIdx = null;
+            this.touchPlaceholderIdx = null;
+            this.dragOverIdx = null;
+            if (from === to) return;
+            const arr = [...this.filteredSubjects];
+            const [moved] = arr.splice(from, 1);
+            arr.splice(to, 0, moved);
+            this.filteredSubjects = arr;
+            this.subjects = arr;
+            this.saveOrder();
+        },
+
+        async saveOrder() {
+            if (Api.isLoggedIn()) {
+                try {
+                    await Api.reorderSubjects(this.subjects.map(s => s.id));
+                } catch (e) {
+                    this.toast('保存顺序失败：' + e.message);
+                }
+            } else {
+                localStorage.setItem('dictation_subjects', JSON.stringify(this.subjects));
+            }
         },
 
         exportSubjects() {

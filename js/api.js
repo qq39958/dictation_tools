@@ -90,6 +90,10 @@ const Api = {
         return await this.request('DELETE', `/api/subjects/${id}`);
     },
 
+    async reorderSubjects(ids) {
+        return await this.request('PUT', '/api/subjects/reorder', { ids });
+    },
+
     // ── Dirs API ──────────────────────────────────────────────────────────────
 
     async getDirs() {
