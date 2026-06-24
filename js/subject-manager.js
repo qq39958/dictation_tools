@@ -45,11 +45,12 @@ const SubjectManager = {
                     @dragover.prevent="!isTouch && !searchTerm && onRowDragOver(idx)"
                     @drop="!isTouch && !searchTerm && onRowDrop(idx)"
                     @dragend="!isTouch && onRowDragEnd()"
-                    @touchstart.passive="isTouch && !searchTerm && onRowTouchStart(idx, $event)"
-                    @touchmove.prevent="isTouch && !searchTerm && onRowTouchMove($event)"
-                    @touchend="isTouch && !searchTerm && onRowTouchEnd($event)"
                 >
-                    <td class="td-drag" v-if="!searchTerm">⠿</td>
+                    <td class="td-drag" v-if="!searchTerm"
+                        @touchstart.prevent="isTouch && onRowTouchStart(idx, $event)"
+                        @touchmove.prevent="isTouch && onRowTouchMove($event)"
+                        @touchend.prevent="isTouch && onRowTouchEnd($event)"
+                    >⠿</td>
                     <td class="td-name">{{ subject.subject_name }}</td>
                     <td><span class="dir-badge">{{ subject.subject_dir }}</span></td>
                     <td class="td-date">{{ formatDateTime(subject.created_at) }}</td>
@@ -182,6 +183,7 @@ const SubjectManager = {
             subjects: [],
             filteredSubjects: [],
             searchTerm: '',
+            isTouch: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0),
             showModal: false,
             showDirModal: false,
             showConfirmModal: false,
@@ -512,7 +514,7 @@ const SubjectManager = {
             this.touchPlaceholderIdx = idx;
             this.dragOverIdx = idx;
             this.touchStartY = e.touches[0].clientY;
-            e.currentTarget.classList.add('touch-dragging');
+            e.currentTarget.closest('tr').classList.add('touch-dragging');
         },
 
         onRowTouchMove(e) {
@@ -536,7 +538,7 @@ const SubjectManager = {
 
         onRowTouchEnd(e) {
             if (this.touchDraggingIdx === null) return;
-            e.currentTarget.classList.remove('touch-dragging');
+            e.currentTarget.closest('tr').classList.remove('touch-dragging');
             const from = this.touchDraggingIdx;
             const to = this.touchPlaceholderIdx;
             this.touchDraggingIdx = null;
