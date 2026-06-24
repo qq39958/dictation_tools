@@ -48,7 +48,6 @@ const Dictation = {
                                     :value="subject.subject_name"
                                     :checked="selectedSubjectNames.includes(subject.subject_name)"
                                     @click.stop
-                                    @change="toggleCheckbox(subject.subject_name)"
                                 >
                                 <span>{{ subject.subject_name }}</span>
                             </div>
