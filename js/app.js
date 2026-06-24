@@ -7,12 +7,12 @@ const app = createApp({
         const loggedIn = ref(Api.isLoggedIn());
         const userEmail = ref(Api.getEmail());
         const showAuthModal = ref(false);
+        const menuOpen = ref(false);
 
         const onLoggedIn = () => {
             loggedIn.value = true;
             userEmail.value = Api.getEmail();
             showAuthModal.value = false;
-            // 通知 subject-manager 切换到云端数据
             window.dispatchEvent(new Event('dt:login'));
         };
 
@@ -21,10 +21,10 @@ const app = createApp({
             loggedIn.value = false;
             userEmail.value = '';
             currentView.value = 'subjectManager';
+            menuOpen.value = false;
             window.dispatchEvent(new Event('dt:logout'));
         };
 
-        // 监听 token 过期自动登出事件
         const handleAutoLogout = () => logout();
         onMounted(() => window.addEventListener('dt:logout', handleAutoLogout));
         onUnmounted(() => window.removeEventListener('dt:logout', handleAutoLogout));
@@ -34,11 +34,20 @@ const app = createApp({
             currentView.value = 'dictation';
         };
 
+        const closeMenu = (e) => {
+            if (!e.target.closest('.nav-menu-wrap')) {
+                menuOpen.value = false;
+            }
+        };
+        onMounted(() => document.addEventListener('click', closeMenu));
+        onUnmounted(() => document.removeEventListener('click', closeMenu));
+
         return {
             currentView,
             loggedIn,
             userEmail,
             showAuthModal,
+            menuOpen,
             onLoggedIn,
             logout,
             startDictation
@@ -70,13 +79,27 @@ const app = createApp({
                             @click="currentView = 'dictation'">
                             开始听写
                         </button>
+                        <!-- PC：保持原样 -->
                         <template v-if="loggedIn">
-                            <span class="user-email">{{ userEmail }}</span>
-                            <button class="nav-tab" @click="logout">退出</button>
+                            <span class="user-email nav-only-pc">{{ userEmail }}</span>
+                            <button class="nav-tab nav-only-pc" @click="logout">退出</button>
                         </template>
                         <template v-else>
-                            <button class="nav-tab" @click="showAuthModal = true">登录 / 注册</button>
+                            <button class="nav-tab nav-only-pc" @click="showAuthModal = true">登录 / 注册</button>
                         </template>
+                        <!-- 移动端：汉堡菜单 -->
+                        <div class="nav-menu-wrap nav-only-mobile">
+                            <button class="nav-tab nav-hamburger" @click.stop="menuOpen = !menuOpen" :class="{ active: menuOpen }">☰</button>
+                            <div class="nav-dropdown" v-show="menuOpen">
+                                <template v-if="loggedIn">
+                                    <span class="dropdown-email">{{ userEmail }}</span>
+                                    <button class="dropdown-item" @click="logout">退出</button>
+                                </template>
+                                <template v-else>
+                                    <button class="dropdown-item" @click="showAuthModal = true; menuOpen = false">登录 / 注册</button>
+                                </template>
+                            </div>
+                        </div>
                     </nav>
                 </div>
             </header>
@@ -111,3 +134,4 @@ const app = createApp({
 });
 
 app.mount('#app');
+
