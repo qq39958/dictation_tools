@@ -36,22 +36,20 @@ const Dictation = {
                     <!-- iPad: checkbox 列表 -->
                     <template v-else>
                         <div class="subject-checkbox-list" ref="checkboxList">
-                            <div
+                            <label
                                 v-for="subject in subjectsInDir"
                                 :key="subject.subject_name"
                                 class="subject-checkbox-item"
                                 :class="{ 'subject-checkbox-item--checked': selectedSubjectNames.includes(subject.subject_name) }"
-                                @click="toggleCheckbox(subject.subject_name)"
                             >
                                 <input
                                     type="checkbox"
                                     :value="subject.subject_name"
                                     v-model="selectedSubjectNames"
-                                    @click.stop
-                                    @change.stop
+                                    @change="onSubjectMultiSelect"
                                 >
                                 <span>{{ subject.subject_name }}</span>
-                            </div>
+                            </label>
                         </div>
                         <div style="margin-top:4px;font-size:0.7rem;color:var(--text3)">点击勾选，可多选</div>
                     </template>
