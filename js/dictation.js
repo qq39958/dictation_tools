@@ -46,8 +46,9 @@ const Dictation = {
                                 <input
                                     type="checkbox"
                                     :value="subject.subject_name"
-                                    :checked="selectedSubjectNames.includes(subject.subject_name)"
+                                    v-model="selectedSubjectNames"
                                     @click.stop
+                                    @change.stop
                                 >
                                 <span>{{ subject.subject_name }}</span>
                             </div>
